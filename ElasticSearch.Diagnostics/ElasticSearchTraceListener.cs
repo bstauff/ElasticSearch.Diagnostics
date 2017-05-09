@@ -23,7 +23,8 @@ using System.Collections.Concurrent;
 using System.Reactive.Linq;
 using System.Reactive.Concurrency;
 using System.Security.Principal;
-using Elasticsearch.Net.Connection;
+using System.IO;
+//using Elasticsearch.Net.Connection;
 
 namespace ElasticSearch.Diagnostics
 {
@@ -34,8 +35,7 @@ namespace ElasticSearch.Diagnostics
     {
         private readonly BlockingCollection<JObject> _queueToBePosted = new BlockingCollection<JObject>();
 
-        private ElasticsearchClient _client;
-        //private ElasticClient _client;
+        private ElasticLowLevelClient _client;
 
         /// <summary>
         /// Uri for the ElasticSearch server
@@ -131,7 +131,7 @@ namespace ElasticSearch.Diagnostics
             }
         }
 
-        public ElasticsearchClient Client
+        public ElasticLowLevelClient Client
         //public ElasticClient Client
         {
             get
@@ -150,10 +150,12 @@ namespace ElasticSearch.Diagnostics
                     //cs.ThrowOnElasticsearchServerExceptions();
 
                     var cc = new ConnectionConfiguration(Uri)
-                        .ThrowOnElasticsearchServerExceptions();
+                    //.ThrowOnElasticsearchServerExceptions()
+                    .ThrowExceptions();
 
-                    this._client = new ElasticsearchClient(cc,
-                        null, null, new Elasticsearch.Net.JsonNet.ElasticsearchJsonNetSerializer());
+
+                    this._client = new ElasticLowLevelClient(cc);
+                        //null, null, new Elasticsearch.Net.JsonNet.ElasticsearchJsonNetSerializer());
                     return this._client;
                 }
             }
@@ -379,7 +381,7 @@ namespace ElasticSearch.Diagnostics
         private async Task WriteDirectlyToES(JObject jo)
         {
             //var res = 
-                await Client.IndexAsync(Index, "Trace", jo.ToString());
+                await Client.IndexAsync<Stream>(Index, "Trace", jo.ToString());
 
             //Debug.WriteLine("--------------------");
             //Debug.WriteLine(res.ToString());
@@ -398,7 +400,7 @@ namespace ElasticSearch.Diagnostics
 
             try
             {
-                await Client.BulkAsync(Index, "Trace", bbo.ToArray());
+                await Client.BulkAsync<Stream>(Index, "Trace", bbo.ToArray());
             }
             catch (Exception ex)
             {
